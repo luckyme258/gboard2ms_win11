@@ -1,0 +1,36 @@
+# Gboard Dictionary version:2
+# Gboard Dictionary format:shortcut	word	language_tag	pos_tag
+gp	git push	zz	
+gc	git commit -m""	zz	
+xm	小米9	zh-CN	
+ga	git add	zz	
+mge	M哥	zh-CN	
+yiw	一吻定情	zh-CN	
+jiam	假面骑士	zh-CN	
+zzz	假面骑士zzz	zh-CN	
+aotex	奥特兄弟	zh-CN	
+xm	小米13	zh-CN	
+chunf	春风得意马蹄疾，一日看尽长安花	zh-CN	
+rx	瑞幸咖啡	zh-CN	
+wae	瓦尔登湖	zh-CN	
+yif	疑犯追踪	zh-CN	
+hm	红米6Pro	zh-CN	
+mon	莫奈的向日葵	zh-CN	
+feil	飞流直下三千尺	zh-CN	
+feix	飞翔	zh-CN	
+ruhua	如花似玉	zh-CN	
+feih	飞花似雨，落我肩头	zh-CN	
+py	Python	zz	
+ja	Java	zz	
+gs	git status	zz	
+ai	AI	zz	
+shenm	神秘博士	zh-CN	
+sm	神秘博士	zh-CN	
+laoy	老友记	zh-CN	
+ly	老友记	zh-CN	
+dos	docker start	zz	
+fd	fastboot devices	zz	
+ff	fastboot flash	zz	
+ad	adb devices	zz	
+as	adb sideload	zz	
+yaj	亚极陀	zh-CN	
