@@ -4,6 +4,10 @@
 
 微软拼音词库管理器是一个图形化工具，用于管理微软拼音输入法的自定义短语词库。支持从 Gboard 导入词库、导出为 Gboard 格式、导出为微软拼音 DAT 格式。
 
+演示放在哔哩哔哩了
+
+<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116697432332055&bvid=BV1tj7k6VEeh&cid=38887886665&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
+
 ## 二、安装与运行
 
 ### 方式一：Python 脚本运行
