@@ -13,7 +13,7 @@
 ## 目录结构
 
 ```
-gboard2ms_go\
+gboard2ms_win11\
 ├─ go.mod
 ├─ build.cmd             # 发布构建入口（-s -w，出 6.68 MB）
 ├─ README.md
@@ -49,7 +49,7 @@ $env:GOPROXY = 'https://goproxy.cn,direct'      # go.dev 直连不通，走国�
 ## 构建
 
 ```powershell
-Set-Location 'E:\codes\gboard2ms_go'
+Set-Location 'E:\codes\gboard2ms_win11'
 
 # GUI：先生成 manifest 资源，再带 windowsgui 标志构建
 Set-Location cmd\walkui
