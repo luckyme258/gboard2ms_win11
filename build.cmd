@@ -15,6 +15,8 @@ set "GOCACHE=E:\codes\_toolchains\gocache"
 set "GOPROXY=https://goproxy.cn,direct"
 set "GOSUMDB=sum.golang.google.cn"
 set "GOEXE=%GOROOT%\bin\go.exe"
+rem output name is fixed: gbord_win11.exe (same name for release and debug)
+set "OUT=gbord_win11.exe"
 
 cd /d "%~dp0"
 
@@ -25,18 +27,19 @@ if not exist "%GOEXE%" (
 
 if /I "%1"=="debug" (
   echo [build] DEBUG  ^(DWARF + symtab, about 10.4 MB^)
-  "%GOEXE%" build -ldflags "-H=windowsgui" -o walkui.exe ./cmd/walkui
+  "%GOEXE%" build -ldflags "-H=windowsgui" -o %OUT% ./cmd/walkui
   if errorlevel 1 goto fail
 ) else (
   echo [build] RELEASE  ^(-s -w, about 6.7 MB, this is the shippable one^)
-  "%GOEXE%" build -ldflags "-s -w -H=windowsgui" -o walkui.exe ./cmd/walkui
+  "%GOEXE%" build -ldflags "-s -w -H=windowsgui" -o %OUT% ./cmd/walkui
   if errorlevel 1 goto fail
 )
 
-for %%F in (walkui.exe) do echo [ok] %%F  %%~zF bytes
+for %%F in (%OUT%) do echo [ok] %%F  %%~zF bytes
 echo [note] manifest changed? rerun: rsrc.exe -manifest cmd\walkui\app.manifest -o cmd\walkui\rsrc.syso
 goto :eof
 
 :fail
 echo [fail] build error
 exit /b 1
+

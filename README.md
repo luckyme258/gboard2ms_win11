@@ -7,7 +7,7 @@
 
 # 微软拼音词库管理器（Go 版）
 
-> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v2.0** 的 `walkui.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
+> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v1.1** 的 `gbord_win11.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
 >
 > **❓ 遇到问题**：请到 [Issues](https://github.com/luckyme258/gboard2ms_win11/issues) 反馈，附上系统版本、操作步骤、报错截图。
 >
@@ -32,11 +32,24 @@
 
 [▶️ 点击观看使用演示（B站）](https://www.bilibili.com/video/BV1tj7k6VEeh)
 
+## 界面预览
+
+**中文界面**
+
+![中文界面](docs/ui-zh.png)
+
+**English UI**
+
+![English UI](docs/ui-en.png)
+
+> 全白底表格，鼠标所在行由系统原生浅蓝高亮；行高 41px，长词库也不容易串行。
+
+
 ## 二、安装与运行
 
 ### 方式一：直接运行 exe（推荐）
 
-1. 到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 `walkui.exe`
+1. 到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 `gbord_win11.exe`
 2. 放到一个固定文件夹（例如 `D:\Tools\gboard2ms\`），双击运行
 3. `book.txt` 会在 exe 同目录自动生成
 
@@ -46,7 +59,7 @@
 
 见文末「附：开发与构建」。
 
-**注意**：`book.txt` 与 `walkui.exe` 放在同一目录；换文件夹时两个一起带走。
+**注意**：`book.txt` 与 `gbord_win11.exe` 放在同一目录；换文件夹时两个一起带走。
 
 ## 三、主界面
 
@@ -80,8 +93,9 @@
 
 ### 3.2 界面操作小细节
 
-- 鼠标所在的那一行会高亮成浅黄色，方便看清当前指向哪条
-- 隔行底色交替，长词库也不容易串行
+- 鼠标所在的那一行由系统原生浅蓝高亮，一眼就能看清当前指向哪条
+- 表格全白底、不铺隔行底纹：屏幕上只有「浅蓝 = 当前行」这一种颜色，不会和灰色底纹混淆
+- 行高 41px、字号 13pt，长词库也不挤
 - 短语列宽度随窗口自适应，编码列与候选位置列固定宽度
 
 ## 四、基本操作
@@ -163,7 +177,7 @@ Gboard_Dictionary_20261118_140530.zip
 
 | 文件                          | 说明                                          |
 | ----------------------------- | --------------------------------------------- |
-| `walkui.exe`                  | 主程序（约 6.7 MB，单文件）                     |
+| `gbord_win11.exe`                  | 主程序（约 6.7 MB，单文件）                     |
 | `book.txt`                    | 内部统一词库，三列 Tab 分隔                     |
 | `book.txt.bak`                | 保存时自动生成的备份                            |
 | `Gboard_Dictionary_*.zip`     | Gboard 导出产物（可含多个 `dictionary_*.txt`）  |
@@ -252,9 +266,21 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 
 ---
 
-**版本**：2.0
+**版本**：1.1
 **更新日期**：2026-11-18
-**本次更新**：Go 重写、单文件 exe；适配新版 Gboard `version:2` zip 词典包；支持直接导入手机导出的 zip；DAT 导入修复（词条偏移与 `00 00` 对齐）；中英双语界面。
+
+**1.1 更新**（GUI 打磨版）：
+
+- **悬停高亮交还系统**：不再自绘浅黄——实测那层浅黄会被 comctl32 的原生热区盖在下面，叠出来的颜色发绿发脏，还会和系统高亮抢同一行，造成闪烁与错位
+- **修复行高从未生效**：`LVM_SETIMAGELIST` 该用 `LVSIL_SMALL` 却传了 `LVSIL_NORMAL`，且作用在宽度为 0 的冻结列上；行高实测 27px → **41px**
+- **取消隔行灰底**：全白底 + 单一浅蓝当前行，屏幕上只有一种"位置色"，不再干扰视线
+- **列表双缓冲**：鼠标滑动不再闪白、不再抖屏
+- **新增「导入 book.txt」按钮**：直接读取现有 `book.txt` 合并，编码+短语去重
+- **字体修复**：`MainWindow` / `Dialog` 创建时下发 12pt（原先的类型断言恒为假，整段放大字体是死代码）
+- 修复切换语言时「导入 book.txt」按钮文案不跟随
+- 产物统一命名 `gbord_win11.exe`
+
+**上一版（v2.0）**：Go 重写、单文件 exe；适配新版 Gboard `version:2` zip 词典包；支持直接导入手机导出的 zip；DAT 导入修复（词条偏移与 `00 00` 对齐）；中英双语界面。
 
 ---
 
@@ -265,7 +291,7 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 [![Release](https://img.shields.io/github/v/release/luckyme258/gboard2ms_win11?label=release)](https://github.com/luckyme258/gboard2ms_win11/releases/latest)
 [![Issues](https://img.shields.io/github/issues/luckyme258/gboard2ms_win11)](https://github.com/luckyme258/gboard2ms_win11/issues)
 
-> **⬇️ Download the latest version**: get **v2.0** (`walkui.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
+> **⬇️ Download the latest version**: get **v1.1** (`gbord_win11.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
 >
 > **❓ Found a problem**: please open an [issue](https://github.com/luckyme258/gboard2ms_win11/issues) with your Windows version, the steps you took, and a screenshot of the error.
 >
@@ -284,11 +310,24 @@ This build is a **Go + `lxn/walk`** rewrite: a single exe, fast startup, no runt
 
 **The UI is available in Chinese and English**: picked automatically from the system language at startup, and switchable any time from the top-right corner.
 
+## Screenshots
+
+**Chinese UI**
+
+![Chinese UI](docs/ui-zh.png)
+
+**English UI**
+
+![English UI](docs/ui-en.png)
+
+> All-white rows; the row under the pointer is highlighted in the system's native light blue. Row height is 41px, so long dictionaries stay readable.
+
+
 ## 2. Installation
 
 ### Option 1: run the executable (recommended)
 
-1. Download `walkui.exe` from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest)
+1. Download `gbord_win11.exe` from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest)
 2. Put it in a fixed folder (e.g. `D:\Tools\gboard2ms\`) and double-click it
 3. `book.txt` is created automatically next to the exe
 
@@ -298,7 +337,7 @@ This build is a **Go + `lxn/walk`** rewrite: a single exe, fast startup, no runt
 
 See "Appendix: build & development" at the end.
 
-**Note**: `book.txt` lives next to `walkui.exe` — move both together.
+**Note**: `book.txt` lives next to `gbord_win11.exe` — move both together.
 
 ## 3. Main Window
 
@@ -411,7 +450,7 @@ Gboard_Dictionary_20261118_140530.zip
 
 | File | Description |
 | --- | --- |
-| `walkui.exe` | the application (~6.7 MB, single file) |
+| `gbord_win11.exe` | the application (~6.7 MB, single file) |
 | `book.txt` | the single internal dictionary, three tab-separated columns |
 | `book.txt.bak` | automatic backup created on save |
 | `Gboard_Dictionary_*.zip` | Gboard export (may contain several `dictionary_*.txt`) |
@@ -493,9 +532,21 @@ Bugs, suggestions and feature requests are welcome in **[Issues](https://github.
 
 ---
 
-**Version**: 2.0
+**Version**: 1.1
 **Date**: 2026-11-18
-**This release**: Go rewrite with a single-file exe; Gboard `version:2` zip dictionary packages; direct import of the phone-exported zip; DAT import fixes (entry offset and `00 00` alignment); bilingual UI.
+
+**1.1 — UI polish build**:
+
+- **Hover highlight given back to the system**: the pale-yellow fill was drawn *under* comctl32's native hot area, so the mixed colour looked dirty green and fought the system highlight on the same row (flicker and offset included)
+- **Row height never actually applied — fixed**: `LVM_SETIMAGELIST` was sent with `LVSIL_NORMAL` instead of `LVSIL_SMALL`, and to the zero-width frozen column; measured row height 27px → **41px**
+- **Alternating grey removed**: all-white rows plus one light-blue current row — only one "position colour" on screen
+- **Double-buffered list view**: no more white flash or jitter while the pointer moves
+- **New "Import book.txt" button**: merges an existing `book.txt`, de-duplicated on shortcut + phrase
+- **Font fix**: 12pt is now passed to `MainWindow` / `Dialog` at creation (the old type assertion never matched, so the whole font-sizing block was dead code)
+- Fixed the "Import book.txt" button label not following a language switch
+- Artifact renamed to `gbord_win11.exe`
+
+**Previous (v2.0)**: Go rewrite with a single-file exe; Gboard `version:2` zip dictionary packages; direct import of the phone-exported zip; DAT import fixes (entry offset and `00 00` alignment); bilingual UI.
 
 ---
 
@@ -521,7 +572,7 @@ gboard2ms_win11\
 │   ├─ app.manifest      # comctl32 v6 + PerMonitorV2（视觉样式 / 高 DPI）
 │   └─ rsrc.syso         # 由 app.manifest 生成，构建时自动嵌入
 ├─ spike\main.go         # 格式层 CLI（复用 internal/core）
-├─ walkui.exe            # GUI 产物（本地，不入库，走 Release 附件）
+├─ gbord_win11.exe            # GUI 产物（本地，不入库，走 Release 附件）
 ├─ spike.exe             # CLI 产物（本地，不入库）
 ├─ book.txt              # 词库（本地，不入库）
 └─ out\                  # 试跑输出（本地，不入库）
@@ -552,7 +603,7 @@ build.cmd debug    # 带调试信息，出 10.4 MB
 Set-Location cmd\walkui
 & "$env:GOPATH\bin\rsrc.exe" -manifest app.manifest -o rsrc.syso   # 仅 manifest 变更时需要
 Set-Location ..\..
-& "$env:GOROOT\bin\go.exe" build -ldflags "-s -w -H=windowsgui" -o walkui.exe ./cmd\walkui
+& "$env:GOROOT\bin\go.exe" build -ldflags "-s -w -H=windowsgui" -o gbord_win11.exe ./cmd\walkui
 
 # CLI
 & "$env:GOROOT\bin\go.exe" build -o spike.exe ./spike

@@ -29,6 +29,7 @@ var texts = map[string]pair{
 	"del":         {"删除", "Delete"},
 	"imp_gboard":  {"导入 Gboard", "Import Gboard"},
 	"imp_dat":     {"导入 DAT", "Import DAT"},
+	"imp_book":    {"导入 book.txt", "Import book.txt"},
 	"exp_gboard":  {"导出 Gboard", "Export Gboard"},
 	"exp_dat":     {"导出 DAT", "Export DAT"},
 	"save":        {"保存", "Save"},
@@ -60,6 +61,7 @@ var texts = map[string]pair{
 	"imp_none":        {"未从文件中解析到有效条目", "No valid rows found in the file"},
 	"imp_all_dup":     {"没有新增条目：%d 条已存在", "Nothing new: %d row(s) already exist"},
 	"imp_dat_done":    {"从 DAT 导入 %d 条", "Imported %d rows from DAT"},
+	"imp_book_done":   {"从 book.txt 导入 %d 条，跳过重复 %d 条", "Imported %d rows from book.txt, skipped %d duplicates"},
 	"imp_header_warn": {"以下文件缺少 version:2 头部，已宽松解析：%s", "Missing version:2 header (parsed leniently): %s"},
 	"exp_gboard_done": {"导出 %d 条 -> %s（%s）", "Exported %d rows -> %s (%s)"},
 	"exp_dat_done":    {"导出 %d 条 -> %s", "Exported %d rows -> %s"},
@@ -68,6 +70,7 @@ var texts = map[string]pair{
 	"load_fail":       {"读取 book.txt 失败: %v", "Failed to read book.txt: %v"},
 	"ft_zip":          {"Gboard 词典包 (*.zip)", "Gboard dictionary (*.zip)"},
 	"ft_dat":          {"微软拼音 (*.dat)", "Microsoft Pinyin (*.dat)"},
+	"ft_book":         {"词库 (*.txt)", "Dictionary (*.txt)"},
 	"ft_all":          {"所有文件 (*.*)", "All files (*.*)"},
 	"dialog_open":     {"选择文件", "Open"},
 	"dialog_save":     {"保存到", "Save as"},
@@ -112,13 +115,14 @@ type app struct {
 	lblSearch, lblLang           *walk.Label
 	btnAdd, btnDel               *walk.PushButton
 	btnImpGboard, btnImpDat      *walk.PushButton
+	btnImpBook                   *walk.PushButton
 	btnExpGboard, btnExpDat      *walk.PushButton
 	btnSave, btnOpen             *walk.PushButton
 	pathLbl                      *walk.Label
 	font                         *walk.Font
 	tableFont                    *walk.Font
 	inputFont                    *walk.Font
-	hover                        *hoverStyler
+	tableHwnd                    win.HWND // 内部 SysListView32 句柄，用于行高与双缓冲
 
 	entries  []core.Entry
 	filtered []core.Entry
@@ -126,16 +130,11 @@ type app struct {
 	bookPath string
 }
 
-// hoverStyler 只负责给鼠标所在行刷浅黄底色，其它行不动（保留隔行底色与选中蓝）。
-type hoverStyler struct {
-	row int
-}
-
-func (s *hoverStyler) StyleCell(st *walk.CellStyle) {
-	if s.row >= 0 && st.Row() == s.row {
-		st.BackgroundColor = walk.RGB(0xFF, 0xF9, 0xC4)
-	}
-}
+// 关于「悬停高亮」：不再自己画。
+// 实测（把 CellStyler 整段 return 掉后复查像素）comctl32 的报表列表控件本身就会把鼠标
+// 所在行画成浅蓝热区，我们再用 CellStyler 刷一层浅黄只会被盖在下面，叠出来的颜色既不是
+// 浅黄也不是系统的蓝（老截图里那种发绿的底色就是两层叠加的结果）。
+// 所以这里删掉自绘逻辑和 120ms 轮询：悬停交给系统，避免「自绘 vs 原生」两层互相打架。
 
 func (a *app) t(key string) string {
 	p := texts[key]
@@ -200,6 +199,9 @@ func (a *app) build() error {
 		Title:         a.t("title"),
 		Size:          d.Size{Width: 1060, Height: 680},
 		MinSize:       d.Size{Width: 940, Height: 580},
+		// 字体必须在创建前给窗口：walk 只在 Create 阶段把窗口字体下发给子控件，
+		// 创建完再 SetFont 只会改窗口自己，按钮/标签仍是系统 8pt（且高度不会重算，字会被裁）。
+		Font:          d.Font{Family: a.uiFontFamily(), PointSize: 12},
 		Layout:        d.VBox{Margins: d.Margins{Left: 14, Top: 12, Right: 14, Bottom: 10}, Spacing: 10},
 		OnSizeChanged: a.onResize,
 		Children: []d.Widget{
@@ -231,6 +233,7 @@ func (a *app) build() error {
 				Children: []d.Widget{
 					d.PushButton{AssignTo: &a.btnImpGboard, Text: a.t("imp_gboard"), OnClicked: a.onImportGboard},
 					d.PushButton{AssignTo: &a.btnImpDat, Text: a.t("imp_dat"), OnClicked: a.onImportDat},
+					d.PushButton{AssignTo: &a.btnImpBook, Text: a.t("imp_book"), OnClicked: a.onImportBook},
 					d.PushButton{AssignTo: &a.btnExpGboard, Text: a.t("exp_gboard"), OnClicked: a.onExportGboard},
 					d.PushButton{AssignTo: &a.btnExpDat, Text: a.t("exp_dat"), OnClicked: a.onExportDat},
 					d.HSpacer{},
@@ -241,7 +244,8 @@ func (a *app) build() error {
 				AssignTo:              &a.table,
 				Columns:               a.columnSpec(),
 				MinSize:               d.Size{Height: 260},
-				AlternatingRowBG:      true,
+				// 关掉隔行灰底：全白底 + 系统原生浅蓝悬停，颜色只有一个，不会和当前行混淆。
+				AlternatingRowBG:         false,
 				MultiSelection:        true,
 				NotSortableByHeaderClick: true,
 				OnItemActivated:       a.onEdit,
@@ -266,54 +270,70 @@ func (a *app) build() error {
 	a.pathLbl.SetTextColor(walk.RGB(0x88, 0x88, 0x88))
 	a.pathLbl.SetText(filepath.Dir(a.bookPath))
 	a.applyFont()
-	a.hover = &hoverStyler{row: -1}
-	a.table.SetCellStyler(a.hover)
-	// 鼠标所在行刷浅黄：walk 没有 hover 事件（原生列表不会把 WM_MOUSEMOVE 转发给 Go），
-	// 用 120ms 轮询光标位置 → IndexAt，变化时才重绘。
-	go func() {
-		tk := time.NewTicker(120 * time.Millisecond)
-		defer tk.Stop()
-		for range tk.C {
-			_ = a.mw
-			a.mw.Synchronize(func() {
-				var p win.POINT
-				if !win.GetCursorPos(&p) || !win.ScreenToClient(a.table.Handle(), &p) {
-					return
-				}
-				idx := a.table.IndexAt(int(p.X), int(p.Y))
-				if idx >= 0 {
-					for _, si := range a.table.SelectedIndexes() {
-						if si == idx {
-							idx = -1
-							break
-						}
-					}
-				}
-				if idx != a.hover.row {
-					a.hover.row = idx
-					_ = a.table.Invalidate()
-				}
-			})
-		}
-	}()
-	// 行高对齐 Python 版 Treeview 的 rowheight=30。
-	// walk 的 CustomRowHeight 会让 applyFont 提前 return（字体失效），所以直接对内部
-	// SysListView32 发 LVM_SETITEMHEIGHT；列表控件初始化完成后再发，否则会崩。
+	// 行高：报表列表的行高由 LVSIL_SMALL 图像列表高度决定，列表控件初始化完成后再设，
+	// 否则会崩。悬停高亮交给系统原生，不再自绘。
 	go func() {
 		time.Sleep(700 * time.Millisecond)
 		_ = a.mw
 		a.mw.Synchronize(func() {
-			setRowHeight(a.table, 40)
+			a.tableHwnd = findListView(a.table)
+			if a.tableHwnd == 0 {
+				return
+			}
+			setRowHeight(a.tableHwnd, 40)
+			// 双缓冲：comctl32 先画到内存 DC 再一次性贴屏，鼠标滑动时不再闪白。
+			win.SendMessage(a.tableHwnd, win.LVM_SETEXTENDEDLISTVIEWSTYLE,
+				win.LVS_EX_DOUBLEBUFFER, win.LVS_EX_DOUBLEBUFFER)
 		})
 	}()
 	a.onResize()
 	return nil
 }
 
+// findListView 取「真正显示内容的那个」SysListView32。
+//
+// walk 的 TableView 是个复合控件，内部固定创建两个 SysListView32：
+// 冻结列用 hwndFrozenLV（本项目没设冻结列，宽度为 0）和滚动列用 hwndNormalLV。
+// EnumChildWindows 按 z 序枚举，第一个拿到的是宽度 0 的冻结列，对它做命中测试、
+// 设置行高、局部重绘全部无效（客户区宽度 0 → 永远 -1）。所以按窗口宽度挑最宽的那个。
+func findListView(tv *walk.TableView) win.HWND {
+	if tv == nil {
+		return 0
+	}
+	var best win.HWND
+	bestW := int32(0)
+	user32 := syscall.NewLazyDLL("user32.dll")
+	enum := user32.NewProc("EnumChildWindows")
+	getCls := user32.NewProc("GetClassNameW")
+	getRect := user32.NewProc("GetWindowRect")
+	cb := syscall.NewCallback(func(h uintptr, _ uintptr) uintptr {
+		var buf [64]uint16
+		_, _, _ = getCls.Call(h, uintptr(unsafe.Pointer(&buf[0])), 64)
+		if syscall.UTF16ToString(buf[:]) != "SysListView32" {
+			return 1 // 继续找
+		}
+		var rc win.RECT
+		_, _, _ = getRect.Call(h, uintptr(unsafe.Pointer(&rc)))
+		if w := rc.Right - rc.Left; w > bestW {
+			bestW = w
+			best = win.HWND(h)
+		}
+		return 1
+	})
+	_, _, _ = enum.Call(uintptr(tv.Handle()), cb, 0)
+	return best
+}
+
 // setRowHeight 用「小图标列表」撑行高：SysListView32 的行高由字体/图像列表高度决定，
 // 直接发 LVM_SETITEMHEIGHT 会让 comctl32 崩掉，所以挂一个 1×px 的空图像列表。
-func setRowHeight(tv *walk.TableView, px int) {
-	if tv == nil {
+// setRowHeight 用「小图标列表」撑行高。
+//
+// 报表模式（report view）下每行高度由 LVSIL_SMALL 那个小图标列表的图像高度决定，
+// 所以这里必须是 LVSIL_SMALL=1，不是 LVSIL_NORMAL=0（写成 0 时高度完全不生效，
+// 行高一直停在字体撑出来的 27px，这就是「行距太紧」的真正原因）。
+// 直接发 LVM_SETITEMHEIGHT 会让 comctl32 崩掉，所以走图像列表这条路。
+func setRowHeight(h win.HWND, px int) {
+	if h == 0 {
 		return
 	}
 	comctl := syscall.NewLazyDLL("comctl32.dll")
@@ -322,18 +342,21 @@ func setRowHeight(tv *walk.TableView, px int) {
 	if himl == 0 {
 		return
 	}
-	user32 := syscall.NewLazyDLL("user32.dll")
-	enum := user32.NewProc("EnumChildWindows")
-	getCls := user32.NewProc("GetClassNameW")
-	cb := syscall.NewCallback(func(h uintptr, _ uintptr) uintptr {
-		var buf [64]uint16
-		_, _, _ = getCls.Call(h, uintptr(unsafe.Pointer(&buf[0])), 64)
-		if syscall.UTF16ToString(buf[:]) == "SysListView32" {
-			win.SendMessage(win.HWND(h), win.LVM_SETIMAGELIST, 0 /* LVSIL_SMALL */, himl)
-		}
-		return 1
-	})
-	_, _, _ = enum.Call(uintptr(tv.Handle()), cb, 0)
+	win.SendMessage(h, win.LVM_SETIMAGELIST, 1 /* LVSIL_SMALL */, himl)
+}
+
+// invalidateRow 只让某一行的矩形重绘（不擦背景）。目前没有自绘逻辑用到它，保留给后续需要。
+func (a *app) invalidateRow(row int) {
+	if a.tableHwnd == 0 || row < 0 {
+		return
+	}
+	var rc win.RECT
+	rc.Left = 0 // LVIR_BOUNDS
+	if win.SendMessage(a.tableHwnd, win.LVM_GETITEMRECT,
+		uintptr(row), uintptr(unsafe.Pointer(&rc))) == 0 {
+		return
+	}
+	win.InvalidateRect(a.tableHwnd, &rc, false)
 }
 
 // columnSpec 列宽：短语列由 onResize 按窗口宽度动态分配，其余固定。
@@ -347,9 +370,18 @@ func (a *app) columnSpec() []d.TableViewColumn {
 
 // ---------------- 字体与布局 ----------------
 
-// applyFont 统一设置界面字体：中文用雅黑，英文用 Segoe UI；10pt 比系统默认的 8pt 大一号。
+// uiFontFamily 界面字体族：中文雅黑，英文 Segoe UI。
+func (a *app) uiFontFamily() string {
+	if a.langIdx == 1 {
+		return "Segoe UI"
+	}
+	return "Microsoft YaHei UI"
+}
+
+// applyFont 处理需要在创建之后再放大的控件（输入框、表格）。
+// 常规控件（标签 / 按钮 / 状态栏）由 MainWindow 创建时的 Font 下发，不能在这里改。
 func (a *app) applyFont() {
-	family, size := "Microsoft YaHei UI", 12
+	family, size := a.uiFontFamily(), 12
 	if a.langIdx == 1 {
 		family, size = "Segoe UI", 12
 	}
@@ -358,7 +390,6 @@ func (a *app) applyFont() {
 		return
 	}
 	a.font = f
-	setFontRec(a.mw, f)
 
 	// 输入类控件（搜索、短语、编码、候选位置）用更大字号 + 固定高度，
 	// 否则原生 EDIT 会保持旧高度，12pt 的字直接被裁一截。
@@ -375,25 +406,6 @@ func (a *app) applyFont() {
 		if tf, err := walk.NewFont(family, size+1, 0); err == nil {
 			a.tableFont = tf
 			a.table.SetFont(tf)
-		}
-	}
-}
-
-func setFontRec(h interface{ Children() *walk.WidgetList }, f *walk.Font) {
-	if setter, ok := h.(interface{ SetFont(*walk.Font) error }); ok {
-		_ = setter.SetFont(f)
-	}
-	list := h.Children()
-	if list == nil {
-		return
-	}
-	for i := 0; i < list.Len(); i++ {
-		child := list.At(i)
-		if setter, ok := child.(interface{ SetFont(*walk.Font) error }); ok {
-			_ = setter.SetFont(f)
-		}
-		if holder, ok := child.(interface{ Children() *walk.WidgetList }); ok {
-			setFontRec(holder, f)
 		}
 	}
 }
@@ -501,6 +513,8 @@ func (a *app) entryDialog(title string, phrase, code string, pos int) (core.Entr
 		Title:    title,
 		Size:     d.Size{Width: 520, Height: 330},
 		MinSize:  d.Size{Width: 520, Height: 330},
+		// 对话框是独立窗口，同样要在创建前给字体（创建后再设只会改窗口自身）。
+		Font:     d.Font{Family: a.uiFontFamily(), PointSize: 12},
 		Layout:   d.VBox{Margins: d.Margins{Left: 20, Top: 18, Right: 20, Bottom: 16}, Spacing: 12},
 		DefaultButton: &okBtn,
 		CancelButton:  &cancelBtn,
@@ -544,8 +558,7 @@ func (a *app) entryDialog(title string, phrase, code string, pos int) (core.Entr
 	if err != nil {
 		return core.Entry{}, false
 	}
-	// 对话框是新建窗口，不会继承主窗口字体，必须单独套一次。
-	setFontRec(dlg, a.font)
+	// 输入框单独放大（14pt + 固定 32px 高），常规控件已由对话框创建时的 Font 下发。
 	if a.inputFont != nil {
 		phraseEdit.SetFont(a.inputFont)
 		codeEdit.SetFont(a.inputFont)
@@ -747,6 +760,50 @@ func (a *app) onImportDat() {
 	walk.MsgBox(a.mw, a.t("hint"), a.tf("imp_dat_done", added), walk.MsgBoxIconInformation)
 }
 
+// onImportBook 导入另一个 book.txt（或任意「编码\t短语\t候选位置」三列 txt），按
+// 「编码 + 短语」去重合并进当前词库；不做整库替换，避免误覆盖现有数据。
+func (a *app) onImportBook() {
+	path := a.pickOpen(a.t("dialog_open"), a.t("ft_book")+"|*.txt|"+a.t("ft_all")+"|*.*")
+	if path == "" {
+		return
+	}
+	rows, err := core.LoadBook(path)
+	if err != nil {
+		walk.MsgBox(a.mw, a.t("error"), err.Error(), walk.MsgBoxIconError)
+		return
+	}
+	if len(rows) == 0 {
+		walk.MsgBox(a.mw, a.t("hint"), a.t("imp_none"), walk.MsgBoxIconWarning)
+		return
+	}
+	existing := map[string]bool{}
+	for _, e := range a.entries {
+		existing[e.Code+"\x00"+e.Phrase] = true
+	}
+	added, dup := 0, 0
+	for _, e := range rows {
+		key := e.Code + "\x00" + e.Phrase
+		if existing[key] {
+			dup++
+			continue
+		}
+		existing[key] = true
+		pos := e.Pos
+		if pos < 1 || pos > 9 {
+			pos = 1
+		}
+		a.entries = append(a.entries, core.Entry{Code: e.Code, Phrase: e.Phrase, Pos: pos})
+		added++
+	}
+	a.refresh()
+
+	msg := a.tf("imp_book_done", added, dup)
+	if added == 0 {
+		msg = a.tf("imp_all_dup", dup)
+	}
+	walk.MsgBox(a.mw, a.t("hint"), msg, walk.MsgBoxIconInformation)
+}
+
 func (a *app) onExportGboard() {
 	if len(a.entries) == 0 {
 		walk.MsgBox(a.mw, a.t("hint"), a.t("imp_none"), walk.MsgBoxIconWarning)
@@ -826,6 +883,7 @@ func (a *app) applyLanguage() {
 	a.btnImpDat.SetText(a.t("imp_dat"))
 	a.btnExpGboard.SetText(a.t("exp_gboard"))
 	a.btnExpDat.SetText(a.t("exp_dat"))
+	a.btnImpBook.SetText(a.t("imp_book"))
 	a.btnSave.SetText(a.t("save"))
 	a.btnOpen.SetText(a.t("open_folder"))
 
