@@ -7,7 +7,7 @@
 
 # 微软拼音词库管理器（Go 版）
 
-> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v1.1** 的 `gbord_win11.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
+> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v1.2** 的 `gbord_win11.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
 >
 > **❓ 遇到问题**：请到 [Issues](https://github.com/luckyme258/gboard2ms_win11/issues) 反馈，附上系统版本、操作步骤、报错截图。
 >
@@ -266,10 +266,10 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 
 ---
 
-**版本**：1.1
+**版本**：1.2
 **更新日期**：2026-11-18
 
-**1.1 更新**（GUI 打磨版）：
+**1.2 更新**（GUI 打磨版）：
 
 - **悬停高亮交还系统**：不再自绘浅黄——实测那层浅黄会被 comctl32 的原生热区盖在下面，叠出来的颜色发绿发脏，还会和系统高亮抢同一行，造成闪烁与错位
 - **修复行高从未生效**：`LVM_SETIMAGELIST` 该用 `LVSIL_SMALL` 却传了 `LVSIL_NORMAL`，且作用在宽度为 0 的冻结列上；行高实测 27px → **41px**
@@ -291,7 +291,7 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 [![Release](https://img.shields.io/github/v/release/luckyme258/gboard2ms_win11?label=release)](https://github.com/luckyme258/gboard2ms_win11/releases/latest)
 [![Issues](https://img.shields.io/github/issues/luckyme258/gboard2ms_win11)](https://github.com/luckyme258/gboard2ms_win11/issues)
 
-> **⬇️ Download the latest version**: get **v1.1** (`gbord_win11.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
+> **⬇️ Download the latest version**: get **v1.2** (`gbord_win11.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
 >
 > **❓ Found a problem**: please open an [issue](https://github.com/luckyme258/gboard2ms_win11/issues) with your Windows version, the steps you took, and a screenshot of the error.
 >
@@ -532,10 +532,10 @@ Bugs, suggestions and feature requests are welcome in **[Issues](https://github.
 
 ---
 
-**Version**: 1.1
+**Version**: 1.2
 **Date**: 2026-11-18
 
-**1.1 — UI polish build**:
+**1.2 — UI polish build**:
 
 - **Hover highlight given back to the system**: the pale-yellow fill was drawn *under* comctl32's native hot area, so the mixed colour looked dirty green and fought the system highlight on the same row (flicker and offset included)
 - **Row height never actually applied — fixed**: `LVM_SETIMAGELIST` was sent with `LVSIL_NORMAL` instead of `LVSIL_SMALL`, and to the zero-width frozen column; measured row height 27px → **41px**
