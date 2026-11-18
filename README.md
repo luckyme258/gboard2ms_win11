@@ -1,6 +1,9 @@
-# gboard2ms_go（技术探索）
+# gboard2ms_win11 — 微软拼音词库管理器（Go 版）
 
-用 Go 复现「微软拼音词库管理器」的可行性验证。**独立目录，不参与 `gboard2ms_win11` 的任何构建或发布。**
+用 Go + `lxn/walk` 重写的「微软拼音词库管理器」：单个 exe（约 6.7 MB），不依赖 Python 环境，Windows 10/11 直接运行。
+
+> Python 旧版（v1.0 及以前）见 [luckyme258/gboard2ms_win11_python](https://github.com/luckyme258/gboard2ms_win11_python)。
+> 本仓库为主线；格式与 Python 版逐字节兼容（zip 双字典 / DAT 可互相导入导出）。
 
 - 选型与结论：`技术选型分析.md`
 - 状态：格式层与 Python 版**逐字节一致**；GUI 原型（`lxn/walk`）已可运行
