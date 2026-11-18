@@ -1,0 +1,11 @@
+# 构建产物（走 Release 附件，不进仓库）
+*.exe
+out/
+
+# 本机词库与备份（个人数据，不公开）
+book.txt
+book.txt.bak
+*.bak
+
+# 工具链与缓存
+.gocache/
