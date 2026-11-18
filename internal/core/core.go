@@ -286,8 +286,10 @@ func ParseDat(path string) ([]Entry, error) {
 		return nil, ErrBadDat
 	}
 	offsetStart := int64(binary.LittleEndian.Uint32(raw[16:20]))
+	// 偏移表里的偏移量是相对「词条区起点」而不是文件头，必须从 20:24 读，不能直接用 48。
+	entryAreaStart := int64(binary.LittleEndian.Uint32(raw[20:24]))
 	entryCount := int(binary.LittleEndian.Uint32(raw[28:32]))
-	if entryCount < 0 || offsetStart < 0 {
+	if entryCount < 0 || offsetStart < 0 || entryAreaStart < int64(datHeaderSize) {
 		return nil, ErrBadDat
 	}
 	var out []Entry
@@ -297,8 +299,10 @@ func ParseDat(path string) ([]Entry, error) {
 			break
 		}
 		off := int64(binary.LittleEndian.Uint32(raw[pos : pos+4]))
-		p := datHeaderSize + off
-		if p+12 > int64(len(raw)) {
+		p := entryAreaStart + off
+		// 词条头是 16 字节：marker(4) + codeTotalLen(2) + pos(1) + flag(1) + reserved(4) + timestamp(4)
+		const entryHeaderSize = 16
+		if p+entryHeaderSize > int64(len(raw)) {
 			continue
 		}
 		codeTotalLen := int(binary.LittleEndian.Uint16(raw[p+4 : p+6]))
@@ -307,17 +311,17 @@ func ParseDat(path string) ([]Entry, error) {
 			position = 1
 		}
 		codeBytes := int64(codeTotalLen) - 12
-		if codeBytes <= 0 || p+12+codeBytes > int64(len(raw)) {
+		if codeBytes <= 0 || p+entryHeaderSize+codeBytes > int64(len(raw)) {
 			continue
 		}
-		seg := raw[p+12 : p+12+codeBytes]
+		seg := raw[p+entryHeaderSize : p+entryHeaderSize+codeBytes]
 		idx := bytesIndex(seg, []byte{0, 0})
 		if idx < 0 {
 			continue
 		}
 		code := fromUTF16LE(seg[:idx])
 		headText := fromUTF16LE(seg[idx+2:])
-		rest := raw[p+12+codeBytes:]
+		rest := raw[p+entryHeaderSize+codeBytes:]
 		idx2 := bytesIndex(rest, []byte{0, 0})
 		if idx2 < 0 {
 			continue
@@ -374,8 +378,10 @@ func fromUTF16LE(b []byte) string {
 	return sb.String()
 }
 
+// bytesIndex 在字节流里找 2 字节的分隔符，但只按 UTF-16LE 的 2 字节边界对齐查找。
+// 若按字节逐位找，ASCII 字符自身的 0x00 高位字节会造出「错位」的 00 00，把编码切坏（实测 code "ad" 只解出 "a"）。
 func bytesIndex(b, sub []byte) int {
-	for i := 0; i+len(sub) <= len(b); i++ {
+	for i := 0; i+len(sub) <= len(b); i += 2 {
 		if b[i] == sub[0] && b[i+1] == sub[1] {
 			return i
 		}

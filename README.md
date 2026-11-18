@@ -5,27 +5,33 @@
 > Python 旧版（v1.0 及以前）见 [luckyme258/gboard2ms_win11_python](https://github.com/luckyme258/gboard2ms_win11_python)。
 > 本仓库为主线；格式与 Python 版逐字节兼容（zip 双字典 / DAT 可互相导入导出）。
 
+- 格式与硬约束：`格式说明.md`（Gboard zip v2 / book.txt / DAT 三套格式 + 9 条硬约束）
 - 选型与结论：`技术选型分析.md`
-- 状态：格式层与 Python 版**逐字节一致**；GUI 原型（`lxn/walk`）已可运行
-- 数据：`book.txt` 为测试副本（32 条，取自旧仓库 `缓存\试跑\book.txt`），只在本目录使用
+- 状态：GUI 已成品化（发布版 6.68 MB）；格式层与 Python 版逐字节一致，`go test ./internal/core` 覆盖 DAT / zip 往返
+- 数据：`book.txt` 为测试副本（32 条），已被 `.gitignore` 排除，不随仓库发布
 
 ## 目录结构
 
 ```
 gboard2ms_go\
 ├─ go.mod
+├─ build.cmd             # 发布构建入口（-s -w，出 6.68 MB）
+├─ README.md
+├─ 格式说明.md            # 三套格式 + 硬约束速查
+├─ 技术选型分析.md
 ├─ internal\core\        # 格式层（唯一实现，GUI 与 CLI 共用）
 │   ├─ core.go           # Entry / LoadBook / SaveBook / ExportZip / ImportZip / ExportDat / ParseDat / LangTag
+│   ├─ core_test.go      # DAT 往返 / zip 往返 / 语言判定
 │   └─ errors.go
-├─ cmd\walkui\           # GUI 原型
+├─ cmd\walkui\           # GUI
 │   ├─ main.go           # 界面 + 事件 + 中英文案表
 │   ├─ app.manifest      # comctl32 v6 + PerMonitorV2（视觉样式 / 高 DPI）
 │   └─ rsrc.syso         # 由 app.manifest 生成，构建时自动嵌入
 ├─ spike\main.go         # 格式层 CLI（复用 internal/core）
-├─ walkui.exe            # GUI 产物（6.68 MB，单个 exe，无 cgo、无外部依赖）
-├─ spike.exe             # CLI 产物
-├─ book.txt              # 测试词库（32 条）
-└─ out\                  # 试跑输出
+├─ walkui.exe            # GUI 产物（本地，不入库，走 Release 附件）
+├─ spike.exe             # CLI 产物（本地，不入库）
+├─ book.txt              # 测试词库（本地，不入库）
+└─ out\                  # 试跑输出（本地，不入库）
 ```
 
 ## 环境
@@ -91,10 +97,11 @@ Set-Location ..\..
 | 工具栏、标签、状态栏 | Microsoft YaHei UI **12pt**（英文 Segoe UI 12pt） |
 | 表格行与表头 | 同族字体 **13pt**；行高强制 **40px**（空图像列表撑高）；鼠标所在行刷浅黄 `#FFF9C4` |
 | 次级信息（统计行、路径） | 与正文同字号，靠**灰色**（`#555` / `#888`）降权 |
-| 输入框（搜索 / 短语 / 编码 / 候选位置） | 同族字体 **14pt**，高度 32px（原生 EDIT 不会随字体长高，必须显式给高度，否则字被裁） |\n| 对话框 | 520×330，标签列固定 80，输入框 300×32，数字框 88×32，按钮 100×34 |
+| 输入框（搜索 / 短语 / 编码 / 候选位置） | 同族字体 **14pt**，高度 32px（原生 EDIT 不会随字体长高，必须显式给高度，否则字被裁） |
+| 对话框 | 520×330，标签列固定 80，输入框 300×32，数字框 88×32，按钮 100×34 |
 | 窗口内距 | 14/12/14/10，区块间距 10；工具栏按钮间距 8 |
 
-字号依据：Python 版实测为控件 10pt / 表格 11pt / `rowheight=30`；Go 版按用户要求整体上一档到 12pt / 13pt / 行高 34（`ms_manager` 只作为基线，不做逐像素复刻）。
+字号依据：Python 版实测为控件 10pt / 表格 11pt / `rowheight=30`；Go 版按用户要求整体上一档到 12pt / 输入框 14pt / 表格 13pt / 行高 40px（`ms_manager` 只作为基线，不做逐像素复刻）。
 
 已知限制：`walk.MsgBox` 是系统 MessageBox，字体由系统决定、改不了；表头暂不支持单独加粗（walk 的 header 与行共用同一字体）。行高不能用 walk 的 `CustomRowHeight`（设了会让 `applyFont` 提前 return、字体失效），也不能发 `LVM_SETITEMHEIGHT`（会让 comctl32 直接崩），只能用「1×30 空图像列表挂到 LVSIL_SMALL」这个办法。
 
@@ -103,6 +110,7 @@ Set-Location ..\..
 ## 格式层自检
 
 ```powershell
+go test ./internal/core -v                          # 单元测试
 .\spike.exe export-zip  book.txt out\go2.zip
 .\spike.exe export-dat  book.txt out\go2.dat 1790000000   # 固定时间戳便于比对
 .\spike.exe roundtrip   book.txt out\rt
@@ -111,15 +119,18 @@ Set-Location ..\..
 最近一次结果：
 
 ```
+TestDatRoundtrip / TestZipRoundtrip / TestLangTag : PASS
 导出 zip: zh-CN 17 / zz 15
 导出 dat: 32 条 / 1600 B
 roundtrip 内容集合一致: True
 zip 内层逐字节一致（vs Python）: True
 DAT 1600 B 逐字节一致（vs Python）: True
+Go 解析 DAT: 32 条，与源数据一致
 ```
 
 ## 注意
 
+- 三套格式的字节级规则与 9 条硬约束见 `格式说明.md`；DAT 解析的两个坑（偏移相对词条区、`00 00` 必须按 2 字节边界找）已写成 `core_test.go` 的回归用例。
 - `zip` 不能比原始字节：Go 每次写 zip 的 `Modified` 秒级不同，只比**解压后内容**。
 - `book.txt` 统一 CRLF；短语按 `[]rune` 切前 2 字符（否则中文/emoji 会被切坏）。
 - `Tableview` 的 `CustomRowHeight` / `CustomHeaderHeight` 在本版本 walk 里**不起作用**：一旦设了，`applyFont` 会直接 return，连字体都不生效，行高仍是默认。要行距就调表格字号。
