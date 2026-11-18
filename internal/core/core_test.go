@@ -1,6 +1,7 @@
 package core
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -65,6 +66,29 @@ func TestZipRoundtrip(t *testing.T) {
 	}
 	if res.PerLang["zh-CN"] != 1 || res.PerLang["zz"] != 2 {
 		t.Fatalf("语言分组异常: %v", res.PerLang)
+	}
+}
+
+func TestImportLegacyTxt(t *testing.T) {
+	// 旧版纯文本词库（2 列，无 version:2 头）仍应能导入
+	path := filepath.Join(t.TempDir(), "dictionary.txt")
+	content := "xm\t小米9\nad\tadb devices\n# 注释行跳过\ndocker\tdocker start\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := ImportZip(path)
+	if err != nil {
+		t.Fatalf("ImportZip(txt): %v", err)
+	}
+	if len(res.Entries) != 3 {
+		t.Fatalf("旧格式导入 %d 条，期望 3: %#v", len(res.Entries), res.Entries)
+	}
+	if res.Legacy != 3 || len(res.HeaderWarn) != 1 {
+		t.Fatalf("legacy=%d headerWarn=%d，期望 3/1", res.Legacy, len(res.HeaderWarn))
+	}
+	if res.Entries[0] != (Entry{Code: "xm", Phrase: "小米9"}) {
+		t.Fatalf("第一条不符: %#v", res.Entries[0])
 	}
 }
 

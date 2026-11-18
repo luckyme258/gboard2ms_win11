@@ -143,10 +143,14 @@ type GboardImport struct {
 	Skipped   int
 }
 
-// ImportZip 读 Gboard zip（也可读单个 txt，legacy 规则同 Python 版）。
+// ImportZip 读 Gboard zip；若文件本身不是 zip，按旧版单文件 txt 兼容解析。
 func ImportZip(path string) (*GboardImport, error) {
 	zr, err := zip.OpenReader(path)
 	if err != nil {
+		// 不是有效 zip：尝试当旧版纯文本词库解析（单文件 dictionary.txt / 2 列旧格式）
+		if res, terr := importTextFile(path); terr == nil && res != nil {
+			return res, nil
+		}
 		return nil, err
 	}
 	defer zr.Close()
@@ -213,7 +217,44 @@ func ImportZip(path string) (*GboardImport, error) {
 	return res, nil
 }
 
-// ---------------- 微软拼音 DAT ----------------
+// importTextFile 兼容旧版纯文本词库：2 列（编码\t短语）或 4 列（短码\t短语\t语言\t候选）。
+// 命中至少一行才认，避免把任意二进制文件当词库读进来。
+func importTextFile(path string) (*GboardImport, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	res := &GboardImport{PerLang: map[string]int{}, Files: 1}
+	text := strings.TrimPrefix(string(raw), "\ufeff")
+	if !strings.HasPrefix(text, "# Gboard Dictionary version:2") {
+		res.HeaderWarn = append(res.HeaderWarn, filepath.Base(path))
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, "\t")
+		if len(parts) < 2 {
+			res.Skipped++
+			continue
+		}
+		shortcut := strings.TrimSpace(parts[0])
+		word := strings.TrimSpace(parts[1])
+		if shortcut == "" || word == "" {
+			res.Skipped++
+			continue
+		}
+		res.Entries = append(res.Entries, Entry{Code: shortcut, Phrase: word})
+		res.PerLang[LangTag(word)]++
+		res.Legacy++
+	}
+	if len(res.Entries) == 0 {
+		return nil, nil
+	}
+	return res, nil
+}
+
 
 const datHeaderSize = 48
 
