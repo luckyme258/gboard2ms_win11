@@ -7,7 +7,9 @@
 
 # 微软拼音词库管理器（Go 版）
 
-> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v1.2** 的 `gbord_win11.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
+> **⬇️ 下载最新版**：到 [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest) 下载 **v1.3** 的 `gbord_win11.exe`（约 6.7 MB，双击即用，不需要装 Go、不需要装 Python）。
+>
+> **⚠️ v1.2 为故障版本**：其「添加 / 编辑词条」点「确定」后会报错或直接闪退，请勿使用，请升级到 v1.3。
 >
 > **❓ 遇到问题**：请到 [Issues](https://github.com/luckyme258/gboard2ms_win11/issues) 反馈，附上系统版本、操作步骤、报错截图。
 >
@@ -266,21 +268,19 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 
 ---
 
-**版本**：1.2
-**更新日期**：2026-11-18
+**版本**：1.3
+**更新日期**：2026-11-23
 
-**1.2 更新**（GUI 打磨版）：
+**1.3 更新**（重要修复，建议所有用户升级）：
 
-- **悬停高亮交还系统**：不再自绘浅黄——实测那层浅黄会被 comctl32 的原生热区盖在下面，叠出来的颜色发绿发脏，还会和系统高亮抢同一行，造成闪烁与错位
-- **修复行高从未生效**：`LVM_SETIMAGELIST` 该用 `LVSIL_SMALL` 却传了 `LVSIL_NORMAL`，且作用在宽度为 0 的冻结列上；行高实测 27px → **41px**
-- **取消隔行灰底**：全白底 + 单一浅蓝当前行，屏幕上只有一种"位置色"，不再干扰视线
-- **列表双缓冲**：鼠标滑动不再闪白、不再抖屏
-- **新增「导入 book.txt」按钮**：直接读取现有 `book.txt` 合并，编码+短语去重
-- **字体修复**：`MainWindow` / `Dialog` 创建时下发 12pt（原先的类型断言恒为假，整段放大字体是死代码）
-- 修复切换语言时「导入 book.txt」按钮文案不跟随
-- 产物统一命名 `gbord_win11.exe`
+- **修复「添加 / 编辑词条」点「确定」崩溃**：`walk` 的对话框在关闭瞬间就 `Dispose` 掉整个窗体（`hWnd` 置 0、子控件全部销毁），而旧代码是在 `dlg.Run()` 返回**之后**才去读输入框——这时读到的必然是空串，按键值控件更是在访问已释放对象。这就是点「确定」后弹「短语和编码不能为空」、或者进程直接消失的根因。现在改为在「确定」回调里、窗口关闭**之前**把值取进局部变量，`Run()` 之后不再触碰任何控件。
+- 「候选位置」在取值时夹到 1–9，手输越界不再穿透到词库。
+- 连点两次「确定」只新增一条，不会重复也不会崩。
+- ⚠️ **v1.2 为故障版本**：添加 / 编辑词条不可用，请勿使用。
 
-**上一版（v2.0）**：Go 重写、单文件 exe；适配新版 Gboard `version:2` zip 词典包；支持直接导入手机导出的 zip；DAT 导入修复（词条偏移与 `00 00` 对齐）；中英双语界面。
+**上一版（1.2）**：GUI 打磨版 —— 悬停高亮交还系统原生、修复行高 27px→41px、取消隔行灰底、列表双缓冲、新增「导入 book.txt」、字体 12pt 真正生效、产物统一命名 `gbord_win11.exe`。
+
+**更早（v2.0）**：Go 重写、单文件 exe；适配新版 Gboard `version:2` zip 词典包；支持直接导入手机导出的 zip；DAT 导入修复（词条偏移与 `00 00` 对齐）；中英双语界面。
 
 ---
 
@@ -291,7 +291,9 @@ A: 功能一致、格式互通，差别在分发形态：Go 版是 6.7 MB 单文
 [![Release](https://img.shields.io/github/v/release/luckyme258/gboard2ms_win11?label=release)](https://github.com/luckyme258/gboard2ms_win11/releases/latest)
 [![Issues](https://img.shields.io/github/issues/luckyme258/gboard2ms_win11)](https://github.com/luckyme258/gboard2ms_win11/issues)
 
-> **⬇️ Download the latest version**: get **v1.2** (`gbord_win11.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
+> **⬇️ Download the latest version**: get **v1.3** (`gbord_win11.exe`, ~6.7 MB) from [Releases](https://github.com/luckyme258/gboard2ms_win11/releases/latest). Single file — no Go, no Python runtime needed.
+>
+> **⚠️ v1.2 is a faulty build**: "Add / Edit entry" errors out or the process disappears when you press OK. Do not use it — upgrade to v1.3.
 >
 > **❓ Found a problem**: please open an [issue](https://github.com/luckyme258/gboard2ms_win11/issues) with your Windows version, the steps you took, and a screenshot of the error.
 >
@@ -532,21 +534,19 @@ Bugs, suggestions and feature requests are welcome in **[Issues](https://github.
 
 ---
 
-**Version**: 1.2
-**Date**: 2026-11-18
+**Version**: 1.3
+**Date**: 2026-11-23
 
-**1.2 — UI polish build**:
+**1.3 — critical fix, please upgrade**:
 
-- **Hover highlight given back to the system**: the pale-yellow fill was drawn *under* comctl32's native hot area, so the mixed colour looked dirty green and fought the system highlight on the same row (flicker and offset included)
-- **Row height never actually applied — fixed**: `LVM_SETIMAGELIST` was sent with `LVSIL_NORMAL` instead of `LVSIL_SMALL`, and to the zero-width frozen column; measured row height 27px → **41px**
-- **Alternating grey removed**: all-white rows plus one light-blue current row — only one "position colour" on screen
-- **Double-buffered list view**: no more white flash or jitter while the pointer moves
-- **New "Import book.txt" button**: merges an existing `book.txt`, de-duplicated on shortcut + phrase
-- **Font fix**: 12pt is now passed to `MainWindow` / `Dialog` at creation (the old type assertion never matched, so the whole font-sizing block was dead code)
-- Fixed the "Import book.txt" button label not following a language switch
-- Artifact renamed to `gbord_win11.exe`
+- **Fixed the crash when pressing OK in "Add / Edit entry"**: `walk` disposes the whole dialog the moment it closes (`hWnd` set to 0, every child control destroyed), while the old code read the edit boxes *after* `dlg.Run()` returned — those reads can only yield empty strings, and value-style controls were touching an already-released object. That is why pressing OK either popped "phrase and shortcut must not be empty" or made the process vanish. Values are now captured inside the OK handler, **before** the window closes, and `Run()` is followed by no control access at all.
+- "Position" is clamped to 1–9 at capture time, so an out-of-range typing can no longer reach the dictionary.
+- Double-clicking OK twice adds exactly one entry — no duplicate, no crash.
+- ⚠️ **v1.2 is a faulty build**: add / edit is unusable; do not use it.
 
-**Previous (v2.0)**: Go rewrite with a single-file exe; Gboard `version:2` zip dictionary packages; direct import of the phone-exported zip; DAT import fixes (entry offset and `00 00` alignment); bilingual UI.
+**Previous (1.2)**: UI polish build — hover given back to the native hot area, row height 27px → 41px, alternating grey removed, double-buffered list, new "Import book.txt", 12pt fonts actually applied, artifact named `gbord_win11.exe`.
+
+**Earlier (v2.0)**: Go rewrite with a single-file exe; Gboard `version:2` zip dictionary packages; direct import of the phone-exported zip; DAT import fixes (entry offset and `00 00` alignment); bilingual UI.
 
 ---
 

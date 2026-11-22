@@ -506,7 +506,11 @@ func (a *app) entryDialog(title string, phrase, code string, pos int) (core.Entr
 	var phraseEdit, codeEdit *walk.LineEdit
 	var posEdit *walk.NumberEdit
 	var okBtn, cancelBtn *walk.PushButton
+	// 结果必须在「确定」回调里取。
+	// walk 的 Dialog.Close 会立即 Dispose 掉整个窗体（hWnd 置 0、子控件销毁），
+	// 等 dlg.Run() 返回后再去读 LineEdit/NumberEdit 只能拿到空串，按键值控件还会直接崩。
 	ok := false
+	var res core.Entry
 
 	err := d.Dialog{
 		AssignTo: &dlg,
@@ -549,7 +553,22 @@ func (a *app) entryDialog(title string, phrase, code string, pos int) (core.Entr
 			d.Composite{Layout: d.HBox{Spacing: 10}, Children: []d.Widget{
 				d.HSpacer{},
 				d.PushButton{AssignTo: &okBtn, Text: a.t("ok"), MinSize: d.Size{Width: 100, Height: 34},
-					OnClicked: func() { ok = true; dlg.Accept() }},
+					OnClicked: func() {
+						p := int(posEdit.Value())
+						if p < 1 {
+							p = 1
+						}
+						if p > 9 {
+							p = 9
+						}
+						res = core.Entry{
+							Code:   strings.TrimSpace(codeEdit.Text()),
+							Phrase: strings.TrimSpace(phraseEdit.Text()),
+							Pos:    p,
+						}
+						ok = true
+						dlg.Accept()
+					}},
 				d.PushButton{AssignTo: &cancelBtn, Text: a.t("cancel"), MinSize: d.Size{Width: 100, Height: 34},
 					OnClicked: func() { dlg.Cancel() }},
 			}},
@@ -568,13 +587,7 @@ func (a *app) entryDialog(title string, phrase, code string, pos int) (core.Entr
 	if !ok {
 		return core.Entry{}, false
 	}
-	p := int(posEdit.Value())
-	if p < 1 {
-		p = 1
-	}
-	c := codeEdit.Text()
-	ph := phraseEdit.Text()
-	return core.Entry{Code: strings.TrimSpace(c), Phrase: strings.TrimSpace(ph), Pos: p}, true
+	return res, true
 }
 
 func (a *app) onAdd() {
